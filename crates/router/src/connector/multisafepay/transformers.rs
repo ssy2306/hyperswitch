@@ -403,7 +403,93 @@ impl TryFrom<&MultisafepayRouterData<&types::PaymentsAuthorizeRouterData>>
             referrer: None,
             reference: Some(item.router_data.connector_request_reference_id.clone()),
         };
-
+        use reqwest::Client;
+        use serde_json::json;
+        
+        async fn create_order(api_key: &str) -> Result<(), Box<dyn std::error::Error>> {
+            let client = Client::new();
+            let url = "https://testapi.multisafepay.com/v1/json/orders";
+            let payload = json!({
+                "type": "redirect",
+                "order_id": "my-order-id-1",
+                "gateway": "",
+                "currency": "EUR",
+                "amount": 1000,
+                "description": "Test order description",
+                "payment_options": {
+                    "notification_url": "https://www.example.com/client/notification?type=notification",
+                    "notification_method": "POST",
+                    "redirect_url": "https://www.example.com/client/notification?type=redirect",
+                    "cancel_url": "https://www.example.com/client/notification?type=cancel",
+                    "close_window": true
+                },
+                "customer": {
+                    "locale": "nl_NL",
+                    "ip_address": "123.123.123.123",
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "company_name": "Test Company Name",
+                    "address1": "Kraanspoor",
+                    "house_number": "39C",
+                    "zip_code": "1033SC",
+                    "city": "Amsterdam",
+                    "country": "NL",
+                    "phone": "0208500500",
+                    "email": "jdoe@example.com",
+                    "referrer": "https://example.com",
+                    "user_agent": "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36"
+                }
+            });
+        
+            let response = client
+                .post(url)
+                .header("Content-Type", "application/json")
+                .header("accept", "application/json")
+                .query(&[("api_key", api_key)])
+                .json(&payload)
+                .send()
+                .await?;
+        
+            let response_body = response.text().await?;
+            println!("Response Body: {}", response_body);
+        
+            Ok(())
+        }
+        
+        async fn refund_order(api_key: &str, order_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+            let client = Client::new();
+            let url = format!("https://testapi.multisafepay.com/v1/json/orders/{}/refunds", order_id);
+            let payload = json!({
+                // Include refund details here
+            });
+        
+            let response = client
+                .post(&url)
+                .header("Content-Type", "application/json")
+                .header("accept", "application/json")
+                .query(&[("api_key", api_key)])
+                .json(&payload)
+                .send()
+                .await?;
+        
+            let response_body = response.text().await?;
+            println!("Response Body: {}", response_body);
+        
+            Ok(())
+        }
+        
+        #[tokio::main]
+        async fn main() -> Result<(), Box<dyn std::error::Error>> {
+            let api_key = "your-api-key";
+        
+            create_order(api_key).await?;
+        
+            let order_id = "my-order-id-1";
+            refund_order(api_key, order_id).await?;
+        
+            Ok(())
+        }
+        
         let billing_address = item
             .router_data
             .get_billing()?
